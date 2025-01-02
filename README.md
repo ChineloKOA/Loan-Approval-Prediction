@@ -1,4 +1,4 @@
-## Loan Prediction Model
+## Loan Approval Prediction Model
 
 ## Overview
 The application of machine learning models in loan approval predictions is a prominent example of using 
