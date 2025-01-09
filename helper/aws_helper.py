@@ -1,3 +1,4 @@
+from typing import Union
 import pandas as pd
 from dotenv import load_dotenv
 import os
@@ -23,35 +24,46 @@ class S3Connection:
 
         return all_buckets
 
-    def read_file(self, key, bucket_name):
+    def read_file(self, key: str, bucket_name: str) -> Union[pd.DataFrame, None]:
+        """Reads a CSV file from an S3 bucket and returns it as a pandas DataFrame."""
         try:
-            response = self.client.get_object(Bucket=bucket_name,
-                                              Key=key)
-            status = response.get('ResponseMetadata', {}).get('HTTPStatusCode', {})
-            # print(f"Successfully pulled the data: Status - {status}")
-            df = pd.read_csv(response.get("Body"))
-            # print(df.head())
+            # Fetch the object from S3
+            response = self.client.get_object(Bucket=bucket_name, Key=key)
+
+            # Check if the response status code indicates success (HTTP 200)
+            status_code = response.get('ResponseMetadata', {}).get('HTTPStatusCode')
+            if status_code != 200:
+                raise ValueError(f"Failed to retrieve object. Status code: {status_code}")
+
+            # Read the CSV file from the response body
+            df = pd.read_csv(response['Body'])
             return df
+
+        except ClientError as e:
+            # Specific error handling for AWS S3 client errors
+            print(f"S3 ClientError: {e}")
+        except ValueError as e:
+            # Handle case where response status code is not 200
+            print(f"ValueError: {e}")
         except Exception as e:
-            print(e)
+            # Generic exception handling for any other errors
+            print(f"An unexpected error occurred: {e}")
+
+        return None  # Return None if an error occurs
 
     def upload_file(self, local_file, bucket_name, key):
         try:
-            print("I am here")
             self.client.head_object(Bucket=bucket_name, Key=key)
             return True  # File exists
         except Exception as e:
-            print(f"it is exception:{e}")
             self.client.upload_file(local_file, bucket_name, key)
             return False  # File does not exist
 
     def write_df(self, df, bucket_name, key):
         try:
-            print("I am here, write_df()")
             self.client.head_object(Bucket=bucket_name, Key=key)
             return True  # File exists
         except Exception as e:
-            print(f"it is exception:{e}")
             # create an in-memory buffer
             csv_buffer = StringIO()
             # copy dataframe to in-memory buffer
